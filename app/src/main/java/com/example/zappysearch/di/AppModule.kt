@@ -6,10 +6,14 @@ import androidx.credentials.CredentialManager
 import androidx.credentials.GetCredentialRequest
 import com.example.zappysearch.R
 import com.example.zappysearch.data.repository.AuthRepositoryImpl
+import com.example.zappysearch.data.repository.ChatRepositoryImpl
 import com.example.zappysearch.domain.repository.AuthRepository
+import com.example.zappysearch.domain.repository.ChatRepository
 import com.google.android.libraries.identity.googleid.GetGoogleIdOption
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.ktx.auth
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
 import dagger.Module
 import dagger.Provides
@@ -59,13 +63,29 @@ object AppModule {
         request: GetCredentialRequest,
         @ApplicationContext context: Context
     ): AuthRepository {
-    return    AuthRepositoryImpl(
-    auth = auth,
-    credentialManager = credentialManager,
-    request = request,
-    context = context
-    )
-}
+        return AuthRepositoryImpl(
+            auth = auth,
+            credentialManager = credentialManager,
+            request = request,
+            context = context
+        )
+    }
+
+    @Provides
+    @Singleton
+    fun provideChatRepository(
+        firestore: FirebaseFirestore
+    ) : ChatRepository {
+        return ChatRepositoryImpl(
+            firestore = firestore
+        )
+    }
+
+    @Provides
+    @Singleton
+    fun provideFirebaseFireStore() : FirebaseFirestore {
+        return Firebase.firestore
+    }
 
 
 }

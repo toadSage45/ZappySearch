@@ -1,5 +1,7 @@
 package com.example.zappysearch.presentation.screens
 
+import android.app.Activity
+import androidx.activity.compose.LocalActivity
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -13,6 +15,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
@@ -25,7 +28,7 @@ import com.example.zappysearch.presentation.navigation.Screen
 fun AuthLoginScreen(authViewModel: AuthViewModel = hiltViewModel(),
                     navController: NavController) {
     val state = authViewModel.state.value
-
+    val activity = LocalActivity.current
     LaunchedEffect(state.currentUser) {
         if(state.currentUser!=null)
         {
@@ -48,7 +51,10 @@ fun AuthLoginScreen(authViewModel: AuthViewModel = hiltViewModel(),
         Spacer(modifier = Modifier.height(32.dp))
 
         Button(onClick = {
-            authViewModel.onAuthEvent(AuthEvent.LoginButtonClick)
+            activity?.let{activity->
+                authViewModel.onAuthEvent(AuthEvent.LoginButtonClick(activity = activity))
+            }
+
         }) {
             Text("Sign In with Google")
         }

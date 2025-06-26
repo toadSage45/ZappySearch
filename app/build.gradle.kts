@@ -47,6 +47,7 @@ dependencies {
     implementation("io.coil-kt.coil3:coil-compose:3.2.0")
 
     implementation("com.google.dagger:hilt-android:2.56.2")
+    implementation(libs.firebase.firestore)
     kapt("com.google.dagger:hilt-compiler:2.56.2")
 
     //Hilt Navigation

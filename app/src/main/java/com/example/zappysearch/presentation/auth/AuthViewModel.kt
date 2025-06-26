@@ -1,5 +1,6 @@
 package com.example.zappysearch.presentation.auth
 
+import android.app.Activity
 import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
@@ -26,8 +27,8 @@ class AuthViewModel @Inject constructor(private val authRepository: AuthReposito
                     currentUser = currentUser
                 )
             }
-            AuthEvent.LoginButtonClick -> {
-                login()
+            is AuthEvent.LoginButtonClick -> {
+                login(event.activity)
             }
             AuthEvent.SignOutButtonClick -> {
                 logout()
@@ -37,9 +38,9 @@ class AuthViewModel @Inject constructor(private val authRepository: AuthReposito
 
     }
 
-    private fun login(){
+    private fun login(activity : Activity){
         viewModelScope.launch {
-            val currentUser = authRepository.login()
+            val currentUser = authRepository.login(activity = activity)
             _state.value = state.value.copy(
                 currentUser = currentUser
             )

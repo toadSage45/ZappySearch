@@ -1,5 +1,6 @@
 package com.example.zappysearch.data.repository
 
+import android.app.Activity
 import android.content.Context
 import android.util.Log
 import androidx.credentials.ClearCredentialStateRequest
@@ -30,9 +31,9 @@ constructor(private val auth : FirebaseAuth,
             @ApplicationContext private val context : Context
     ) : AuthRepository {
 
-    override suspend fun login(): FirebaseUser? {
+    override suspend fun login(activity : Activity): FirebaseUser? {
         try{
-            val result = credentialManager.getCredential(context = context , request = request);
+            val result = credentialManager.getCredential(context = activity , request = request);
             return  handleSignIn(result.credential);
         }catch(e: GetCredentialException){
             Log.e(TAG, "Couldn't retrieve user's credentials: ${e.localizedMessage}")
