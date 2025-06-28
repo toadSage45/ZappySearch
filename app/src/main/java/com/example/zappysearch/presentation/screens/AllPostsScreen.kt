@@ -26,6 +26,7 @@ import com.example.zappysearch.presentation.auth.AuthViewModel
 import com.example.zappysearch.presentation.chatAndPost.ChatEvent
 import com.example.zappysearch.presentation.chatAndPost.ChatViewModel
 import com.example.zappysearch.presentation.navigation.Screen
+import com.example.zappysearch.presentation.screens.components.animations.LottieSearchAnimation
 
 
 @Composable
@@ -64,6 +65,9 @@ fun AllPostsScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
+            item{
+                LottieSearchAnimation()
+            }
             items(posts) { post ->
                 Card(
                     modifier = Modifier.fillMaxWidth(),

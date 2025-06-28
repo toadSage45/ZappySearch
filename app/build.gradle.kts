@@ -42,9 +42,14 @@ android {
     buildFeatures {
         compose = true
     }
+
 }
 
+
 dependencies {
+    //dot-lottie
+    implementation("com.github.LottieFiles:dotlottie-android:0.8.0")
+    implementation("com.airbnb.android:lottie-compose:6.4.0")
     //coil for image
     implementation("io.coil-kt.coil3:coil-compose:3.2.0")
 
