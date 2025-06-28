@@ -5,8 +5,10 @@ import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.zappysearch.domain.model.AppUser
 import com.example.zappysearch.domain.repository.ChatRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -16,12 +18,15 @@ class ChatViewModel @Inject constructor(private val chatRepository: ChatReposito
     private val _chatState = mutableStateOf(ChatState())
     val chatState: State<ChatState> = _chatState
 
+    init{
+        onChatEvent(ChatEvent.GetAllPosts)
+    }
 
 
     fun onChatEvent(event: ChatEvent) {
         when (event) {
             is ChatEvent.DeletePost -> {
-                viewModelScope.launch {
+                viewModelScope.launch (Dispatchers.IO){
                     try {
                         chatRepository.deletePost(event.postId)
                     } catch (e: Exception) {
@@ -31,36 +36,48 @@ class ChatViewModel @Inject constructor(private val chatRepository: ChatReposito
             }
 
             is ChatEvent.GetAllMyChats -> {
-                viewModelScope.launch {
+                viewModelScope.launch (Dispatchers.IO){
                     try {
-                        chatState.value.myId?.let { myId ->
-                            val myChats = chatRepository.getAllMyChats(myId)
+                            val myChats = chatRepository.getAllMyChats(event.myId)
                             _chatState.value = chatState.value.copy(myChats = myChats)
-                        }
                     } catch (e: Exception) {
                         Log.e(TAG, "Error fetching my chats: ${e.message}", e)
                     }
                 }
             }
 
-            is ChatEvent.GetAllMyPostPage -> {
-                viewModelScope.launch {
+            is ChatEvent.GetAllMyPosts -> {
+                viewModelScope.launch (Dispatchers.IO){
                     try {
-                        chatState.value.myId?.let { myId ->
-                            val myPosts = chatRepository.getAllMyPosts(myId)
+                            val myPosts = chatRepository.getAllMyPosts(event.myId)
                             _chatState.value = chatState.value.copy(myPosts = myPosts)
-                        }
+
                     } catch (e: Exception) {
                         Log.e(TAG, "Error fetching my posts: ${e.message}", e)
                     }
                 }
             }
 
-            is ChatEvent.GetAllPostPage -> {
-                viewModelScope.launch {
+            is ChatEvent.GetAllPosts -> {
+                viewModelScope.launch (Dispatchers.IO){
                     try {
                         val allPosts = chatRepository.getAllPosts()
-                        _chatState.value = chatState.value.copy(allPosts = allPosts)
+
+                        val userIdSet = allPosts.map{it.userId}.toSet()
+
+                        val userDetailsMap = mutableMapOf<String , AppUser>()
+
+                        for(userId in userIdSet){
+                            if(!chatState.value.userDetailsMap.containsKey(userId)){
+                                val user = chatRepository.getUserById(userId)
+                                if(user!=null){
+                                    userDetailsMap[userId] = user
+                                }
+                            }
+                        }
+
+                        _chatState.value = chatState.value.copy(allPosts = allPosts,
+                            userDetailsMap = chatState.value.userDetailsMap + userDetailsMap)
                     } catch (e: Exception) {
                         Log.e(TAG, "Error fetching all posts: ${e.message}", e)
                     }
@@ -68,53 +85,83 @@ class ChatViewModel @Inject constructor(private val chatRepository: ChatReposito
             }
 
             is ChatEvent.GetSingleUserMessages -> {
-                viewModelScope.launch {
-                    try {
-                        val myId = chatState.value.myId
-                        val otherUserId = chatState.value.otherUserId
-                        if (!myId.isNullOrEmpty() && !otherUserId.isNullOrEmpty()) {
-                            val singleUserMessages = chatRepository.getSingleUserMessage(
-                                otherUserId = otherUserId,
-                                myId = myId
-                            )
-                            _chatState.value = chatState.value.copy(
-                                singleUserMessages = singleUserMessages
-                            )
-                        }
-                    } catch (e: Exception) {
-                        Log.e(TAG, "Error fetching messages: ${e.message}", e)
+                chatRepository.getSingleUserMessage(
+                    otherUserId = event.otherUserId,
+                    myId = event.myId,
+                    onMessagesChanged = { messages ->
+                        _chatState.value = chatState.value.copy(singleUserMessages = messages)
+                    },
+                    onError = { e ->
+                        Log.e(TAG, "Error listening to messages: ${e.message}")
                     }
-                }
+                )
             }
 
             is ChatEvent.StartChat -> {
-                viewModelScope.launch {
+                viewModelScope.launch (Dispatchers.IO){
                     try {
-                        val myId = chatState.value.myId
-                        val otherUserId = chatState.value.otherUserId
-                        if (!myId.isNullOrEmpty() && !otherUserId.isNullOrEmpty()) {
-                            chatRepository.startChat(myId = myId, otherUserId = otherUserId)
-                        }
+                        val myId = event.myId
+                        val otherUserId = event.otherUserId
+                        chatRepository.startChat(myId = myId, otherUserId = otherUserId)
                     } catch (e: Exception) {
                         Log.e(TAG, "Error starting chat: ${e.message}", e)
                     }
                 }
             }
 
-            is ChatEvent.SetMyUserId -> {
-                _chatState.value = chatState.value.copy(myId = event.myId)
-            }
-
-            is ChatEvent.SetOtherUserId -> {
-                _chatState.value = chatState.value.copy(otherUserId = event.otherUserId)
-            }
-
             is ChatEvent.UploadPost -> {
-                viewModelScope.launch {
+                viewModelScope.launch(Dispatchers.IO) {
                     try {
                         chatRepository.uploadPost(event.post)
+                        //onChatEvent(ChatEvent.GetAllMyPosts(event.myId))
                     } catch (e: Exception) {
                         Log.e(TAG, "Error uploading post: ${e.message}", e)
+                    }
+                }
+            }
+
+            is ChatEvent.UpdatePost -> {
+                viewModelScope.launch(Dispatchers.IO) {
+                    try {
+                        chatRepository.updatePost(event.post)
+                        //onChatEvent(ChatEvent.GetAllMyPosts(event.myId))
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error uploading post: ${e.message}", e)
+                    }
+                }
+            }
+
+            is ChatEvent.GetUserInfo -> {
+                viewModelScope.launch(Dispatchers.IO) {
+                    try {
+                       val otherUser =  chatRepository.getUserById(event.userId)
+                        _chatState.value = chatState.value.copy(
+                            otherUser = otherUser
+                        )
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error Fetching Other User: ${e.message}", e)
+                    }
+                }
+            }
+
+            is ChatEvent.SetUserInfo -> {
+                viewModelScope.launch(Dispatchers.IO) {
+                    try {
+                       chatRepository.saveUser(event.user)
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error uploading user Info: ${e.message}", e)
+                    }
+                }
+            }
+
+            is ChatEvent.SendMessage -> {
+                viewModelScope.launch (Dispatchers.IO){
+                    try {
+                        chatRepository.sendMessage(myId = event.myId,
+                            otherUserId = event.otherUserId ,
+                            message = event.message)
+                    }catch (e: Exception) {
+                        Log.e(TAG, "Error sending the message: ${e.message}", e)
                     }
                 }
             }

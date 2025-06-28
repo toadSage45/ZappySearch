@@ -5,6 +5,8 @@ plugins {
     alias(libs.plugins.google.gms.google.services)
     id("com.google.dagger.hilt.android")
     kotlin("kapt")
+    alias(libs.plugins.google.firebase.crashlytics)
+    id("kotlin-parcelize")
 }
 
 android {
@@ -48,6 +50,8 @@ dependencies {
 
     implementation("com.google.dagger:hilt-android:2.56.2")
     implementation(libs.firebase.firestore)
+    implementation(libs.firebase.crashlytics)
+    implementation(libs.firebase.analytics)
     kapt("com.google.dagger:hilt-compiler:2.56.2")
 
     //Hilt Navigation

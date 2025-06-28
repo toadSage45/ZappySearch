@@ -7,6 +7,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.zappysearch.domain.repository.AuthRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -39,7 +40,7 @@ class AuthViewModel @Inject constructor(private val authRepository: AuthReposito
     }
 
     private fun login(activity : Activity){
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO){
             val currentUser = authRepository.login(activity = activity)
             _state.value = state.value.copy(
                 currentUser = currentUser
@@ -48,7 +49,7 @@ class AuthViewModel @Inject constructor(private val authRepository: AuthReposito
     }
 
     private fun logout(){
-        viewModelScope.launch{
+        viewModelScope.launch(Dispatchers.IO){
             authRepository.signOut()
             _state.value = state.value.copy(
                 currentUser = null

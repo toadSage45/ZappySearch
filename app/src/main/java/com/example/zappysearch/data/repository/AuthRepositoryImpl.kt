@@ -10,10 +10,7 @@ import androidx.credentials.CustomCredential
 import androidx.credentials.GetCredentialRequest
 import androidx.credentials.exceptions.ClearCredentialException
 import androidx.credentials.exceptions.GetCredentialException
-import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.zappysearch.domain.repository.AuthRepository
-import com.example.zappysearch.presentation.auth.AuthViewModel
-import com.google.android.libraries.identity.googleid.GetGoogleIdOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential.Companion.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL
 import com.google.firebase.auth.FirebaseAuth
@@ -33,7 +30,7 @@ constructor(private val auth : FirebaseAuth,
 
     override suspend fun login(activity : Activity): FirebaseUser? {
         try{
-            val result = credentialManager.getCredential(context = activity , request = request);
+            val result = credentialManager.getCredential(context = activity , request = request)
             return  handleSignIn(result.credential);
         }catch(e: GetCredentialException){
             Log.e(TAG, "Couldn't retrieve user's credentials: ${e.localizedMessage}")

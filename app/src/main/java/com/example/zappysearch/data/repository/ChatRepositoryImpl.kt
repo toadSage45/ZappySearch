@@ -1,18 +1,37 @@
 package com.example.zappysearch.data.repository
 
 import android.util.Log
+import com.example.zappysearch.domain.model.AppUser
 import com.example.zappysearch.domain.model.Chats
 import com.example.zappysearch.domain.model.Message
 import com.example.zappysearch.domain.model.Post
 import com.example.zappysearch.domain.repository.ChatRepository
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
+import com.google.firebase.firestore.SetOptions
 import kotlinx.coroutines.tasks.await
 import javax.inject.Inject
 
 
-
 class ChatRepositoryImpl @Inject constructor(private val firestore: FirebaseFirestore) : ChatRepository {
+    override suspend fun saveUser(user: AppUser) {
+        try{
+            firestore.collection("users").document(user.userId).set(user).await()
+        }catch (e: Exception) {
+            Log.e(TAG, "saveUser: ${e.message}", e)
+        }
+
+    }
+
+    override suspend fun getUserById(userId: String): AppUser? {
+        return try {
+           val snapshot =  firestore.collection("users").document(userId).get().await()
+            snapshot.toObject(AppUser::class.java)
+        }catch (e: Exception) {
+            Log.e(TAG, "getUserById: ${e.message}", e)
+            null
+        }
+    }
 
     override suspend fun getAllPosts(): List<Post> {
         return try {
@@ -21,6 +40,19 @@ class ChatRepositoryImpl @Inject constructor(private val firestore: FirebaseFire
         } catch (e: Exception) {
             Log.e(TAG, "getAllPosts: ${e.message}", e)
             emptyList()
+        }
+    }
+
+    override suspend fun updatePost(post: Post): String {
+        return try{
+            firestore.collection("posts")
+                .document(post.postId)
+                .set(post , SetOptions.merge())
+                .await()
+            return post.postId
+        }catch (e : Exception){
+            Log.e(TAG, "getAllPosts: ${e.message}", e)
+            ""
         }
     }
 
@@ -47,21 +79,29 @@ class ChatRepositoryImpl @Inject constructor(private val firestore: FirebaseFire
         }
     }
 
-    override suspend fun getSingleUserMessage(otherUserId: String, myId: String): List<Message> {
-        return try {
-            val chatId = listOf(myId, otherUserId).sorted().joinToString("_")
-            val snapshot = firestore.collection("chats")
-                .document(chatId)
-                .collection("messages")
-                .orderBy("timestamp", Query.Direction.ASCENDING)
-                .get()
-                .await()
-            snapshot.documents.mapNotNull { it.toObject(Message::class.java) }
-        } catch (e: Exception) {
-            Log.e(TAG, "getSingleUserMessage: ${e.message}", e)
-            emptyList()
-        }
+    override fun getSingleUserMessage(
+        otherUserId: String,
+        myId: String,
+        onMessagesChanged: (List<Message>) -> Unit,
+        onError: (Exception) -> Unit
+    ) {
+        val chatId = listOf(myId, otherUserId).sorted().joinToString("_")
+
+        firestore.collection("chats")
+            .document(chatId)
+            .collection("messages")
+            .orderBy("timestamp", Query.Direction.ASCENDING)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    onError(error)
+                    return@addSnapshotListener
+                }
+
+                val messages = snapshot?.documents?.mapNotNull { it.toObject(Message::class.java) } ?: emptyList()
+                onMessagesChanged(messages)
+            }
     }
+
 
     override suspend fun uploadPost(post: Post): String {
         return try {
@@ -72,15 +112,6 @@ class ChatRepositoryImpl @Inject constructor(private val firestore: FirebaseFire
         } catch (e: Exception) {
             Log.e(TAG, "uploadPost: ${e.message}", e)
             ""
-        }
-    }
-
-    override suspend fun movePostToResolved(post: Post) {
-        try {
-            firestore.collection("resolved-posts").add(post).await()
-            deletePost(post.postId)
-        } catch (e: Exception) {
-            Log.e(TAG, "movePostToResolved: ${e.message}", e)
         }
     }
 
@@ -102,21 +133,17 @@ class ChatRepositoryImpl @Inject constructor(private val firestore: FirebaseFire
                 participants = listOf(myId, otherUserId),
                 chatId = chatId
             )
-            val chatDoc = firestore.collection("chats")
+
+            firestore.collection("chats")
                 .document(chatId)
-                .get()
+                .set(chatWithId)
                 .await()
 
-            if (!chatDoc.exists()) {
-                firestore.collection("chats")
-                    .document(chatId)
-                    .set(chatWithId)
-                    .await()
-            }
         } catch (e: Exception) {
             Log.e(TAG, "startChat: ${e.message}", e)
         }
     }
+
 
     override suspend fun sendMessage(otherUserId: String, myId: String, message: Message) {
         try {
