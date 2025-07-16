@@ -2,8 +2,10 @@ package com.example.zappysearch.domain.model
 
 
 import android.os.Parcelable
+import com.google.android.gms.maps.model.LatLng
 import com.google.firebase.Timestamp
 import kotlinx.parcelize.Parcelize
+import kotlinx.parcelize.RawValue
 
 
 data class Post(
@@ -13,8 +15,15 @@ data class Post(
     val timestamp: Timestamp?=null,
     val userId : String="",
     val imageUrl : String = "" ,
-    val location : String = "",
-    val userName: String =""
+    val location : GeoPoint? = null,
+    val userName: String ="",
+    val address : String = ""
+)
+
+
+data class GeoPoint(
+    var latitude: Double = 0.0,
+    var longitude: Double = 0.0
 )
 
 @Parcelize
@@ -24,9 +33,10 @@ data class PostForArg(
     val postDescription : String = "",
     val timestamp: Timestamp?=null,
     val userId : String="",
-    val imageUrl : String = "" ,
-    val location : String = "",
-    val userName: String =""
+    val imageUrl : String = "",
+    val location : @RawValue GeoPoint? = null,
+    val userName: String ="",
+    val address: String = ""
 ) : Parcelable
 
 fun Post.toArg(): PostForArg = PostForArg(
@@ -36,7 +46,8 @@ fun Post.toArg(): PostForArg = PostForArg(
     timestamp,
     userId,
     imageUrl,
-    location
+    location,
+    address
 )
 
 fun PostForArg.toPost(): Post = Post(
@@ -46,7 +57,11 @@ fun PostForArg.toPost(): Post = Post(
     timestamp,
     userId,
     imageUrl,
-    location
+    location,
+    address
 )
 
+fun LatLng.toGeoPoint(): GeoPoint {
+    return GeoPoint(latitude = this.latitude, longitude = this.longitude)
+}
 

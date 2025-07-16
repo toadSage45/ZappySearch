@@ -1,1 +1,3 @@
 /build
+../local.defaults.properties
+../secrets.properties

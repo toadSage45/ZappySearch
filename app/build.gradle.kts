@@ -7,6 +7,7 @@ plugins {
     kotlin("kapt")
     alias(libs.plugins.google.firebase.crashlytics)
     id("kotlin-parcelize")
+    id("com.google.android.libraries.mapsplatform.secrets-gradle-plugin")
 }
 
 android {
@@ -21,6 +22,9 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        buildConfigField("String", "MAPS_API_KEY", "\"${properties["MAPS_API_KEY"]}\"")
+
     }
 
     buildTypes {
@@ -41,12 +45,32 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 
 }
 
+secrets {
+    propertiesFileName = "secrets.properties"
+    defaultPropertiesFileName = "local.defaults.properties"
+}
+
+
 
 dependencies {
+    val placesVersion = "3.4.0"
+    implementation("com.google.android.libraries.places:places:$placesVersion")
+
+    // Google Maps Compose library
+    val mapsComposeVersion = "4.4.1"
+    implementation("com.google.maps.android:maps-compose:$mapsComposeVersion")
+    // Google Maps Compose utility library
+    implementation("com.google.maps.android:maps-compose-utils:$mapsComposeVersion")
+    // Google Maps Compose widgets library
+    implementation("com.google.maps.android:maps-compose-widgets:$mapsComposeVersion")
+
+    implementation("com.google.android.gms:play-services-location:21.0.1")
+
     //dot-lottie
     implementation("com.github.LottieFiles:dotlottie-android:0.8.0")
     implementation("com.airbnb.android:lottie-compose:6.4.0")
@@ -85,6 +109,7 @@ dependencies {
     androidTestImplementation(libs.androidx.ui.test.junit4)
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
+
 }
 
 kapt {

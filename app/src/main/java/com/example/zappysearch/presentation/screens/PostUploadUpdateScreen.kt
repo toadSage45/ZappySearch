@@ -1,5 +1,11 @@
 package com.example.zappysearch.presentation.screens
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.location.Geocoder
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -7,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -16,24 +23,34 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.example.zappysearch.domain.model.Post
 import com.example.zappysearch.domain.model.PostForArg
+import com.example.zappysearch.domain.model.toGeoPoint
 import com.example.zappysearch.presentation.auth.AuthViewModel
 import com.example.zappysearch.presentation.chatAndPost.ChatEvent
 import com.example.zappysearch.presentation.chatAndPost.ChatViewModel
 import com.example.zappysearch.presentation.navigation.Screen
+import com.example.zappysearch.presentation.screens.components.LocationPickerModal
 import com.example.zappysearch.presentation.screens.components.StartChatIconButton
+import com.google.android.gms.location.LocationServices
+import com.google.android.gms.maps.MapsInitializer
+import com.google.android.gms.maps.model.LatLng
 import com.google.firebase.Timestamp
 import kotlinx.coroutines.launch
 
@@ -44,6 +61,17 @@ fun PostUploadUpdateScreen(
     chatViewModel: ChatViewModel = hiltViewModel(),
     navController: NavController
 ) {
+
+    val context = LocalContext.current
+    LaunchedEffect(Unit) {
+        MapsInitializer.initialize(context)
+    }
+
+
+    val fusedLocationClient = remember {
+        LocationServices.getFusedLocationProviderClient(context)
+    }
+
     val currentPost = navController.previousBackStackEntry
         ?.savedStateHandle?.get<PostForArg>("postForArg")
 
@@ -51,15 +79,87 @@ fun PostUploadUpdateScreen(
     val myUserName = authViewModel.state.value.currentUser?.displayName?:"Anonymous"
     val isUpdating = currentPost!=null
     val isOwner  =  currentPost?.userId == myId || currentPost == null
+    var showLocationPicker by remember { mutableStateOf<Boolean>(false) }
 
     var postTitle by remember { mutableStateOf("") }
     var postDescription by remember { mutableStateOf("") }
-    var location by remember { mutableStateOf("") }
-    if(currentPost!=null) {
-        postTitle = currentPost.postTitle
-        postDescription = currentPost.postDescription
-        location = currentPost.location
+    var location by remember { mutableStateOf<LatLng?>(null) }
+    var address by  remember { mutableStateOf<String>("")}
+    var showLocationDialog by remember {mutableStateOf<Boolean>(false)}
+    var getCurrentLocation by remember { mutableStateOf<Boolean>(false) }
+
+
+
+        val permissionLauncher = rememberLauncherForActivityResult(
+            contract = ActivityResultContracts.RequestPermission()
+        ) { isGranted: Boolean ->
+            if (isGranted) {
+                fusedLocationClient.lastLocation.addOnSuccessListener { loc ->
+                    loc?.let {
+                        location = LatLng(it.latitude, it.longitude)
+                    }
+                }
+            }
+        }
+
+        if(getCurrentLocation){
+            LaunchedEffect(Unit) {
+                val permissionStatus = ContextCompat.checkSelfPermission(
+                    context, Manifest.permission.ACCESS_FINE_LOCATION
+                )
+                if (permissionStatus != PackageManager.PERMISSION_GRANTED) {
+                    permissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
+                } else {
+                    // Already granted
+                    fusedLocationClient.lastLocation.addOnSuccessListener { loc ->
+                        if(loc!=null) {
+                            location = LatLng(loc.latitude, loc.longitude)
+                        }else{
+                            showLocationDialog = true
+                        }
+                    }
+                }
+
+                getCurrentLocation = false
+            }
+        }
+    LaunchedEffect(location) {location?.let {loc->
+        val geocoder = Geocoder(context)
+        val result = geocoder.getFromLocation(loc.latitude, loc.longitude, 1)
+        if (!result.isNullOrEmpty()) {
+            address = result[0].getAddressLine(0)
+        }
+
+    } }
+
+
+    if (showLocationDialog) {
+        AlertDialog(
+            onDismissRequest = { showLocationDialog = false },
+            title = { Text("Location Unavailable") },
+            text = { Text("Couldn't access your location. Please set it manually.") },
+            confirmButton = {
+                TextButton(onClick = { showLocationDialog = false }) {
+                    Text("OK")
+                }
+            }
+        )
     }
+
+
+    LaunchedEffect(currentPost) {
+        currentPost?.let {
+            postTitle = it.postTitle
+            postDescription = it.postDescription
+            location = it.location?.let { loc -> LatLng(loc.latitude, loc.longitude) }
+        }
+    }
+
+
+
+
+
+
 
     val scope = rememberCoroutineScope()
     val snackBarHostState = remember { SnackbarHostState() }
@@ -102,12 +202,30 @@ fun PostUploadUpdateScreen(
             )
 
             OutlinedTextField(
-                value = location,
-                onValueChange = { location = it },
+                value = location?.let { "${it.latitude}, ${it.longitude} , $address" } ?: "",
+                onValueChange = {}, // No typing allowed
                 label = { Text("Location") },
-                modifier = Modifier.fillMaxWidth(),
-                enabled = isOwner
+                readOnly = true,
+                enabled = false,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable(enabled = isOwner) {
+
+                        showLocationPicker = true
+                    }
             )
+
+            if (isOwner) {
+                Button(
+                    onClick = {
+                        if (!getCurrentLocation) getCurrentLocation = true
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Set Current Location")
+                }
+            }
+
 
             if (isOwner) {
                 Button(
@@ -116,10 +234,11 @@ fun PostUploadUpdateScreen(
                             postId = currentPost?.postId ?: "",
                             postTitle = postTitle.trim(),
                             postDescription = postDescription.trim(),
-                            location = location.trim(),
+                            location = location?.toGeoPoint(),
                             userId = currentPost?.userId ?: myId,
                             timestamp = currentPost?.timestamp ?: Timestamp.now(),
-                            userName = currentPost?.userName?:myUserName
+                            userName = myUserName,
+                            address = address
                         )
 
                         scope.launch {
@@ -155,6 +274,22 @@ fun PostUploadUpdateScreen(
                 StartChatIconButton(onClick = {onClick()})
             }
         }
+
+        if (showLocationPicker) {
+            Dialog(onDismissRequest = { showLocationPicker = false }) {
+                LocationPickerModal(
+                    initialLocation = location,
+                    isOwner = isOwner,
+                    onLocationSelected = { latLng, addr ->
+                        location = latLng
+                        address = addr
+                        showLocationPicker = false
+                    },
+                    onDismiss = { showLocationPicker = false }
+                )
+            }
+        }
+
     }
 }
 
