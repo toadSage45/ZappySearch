@@ -5,15 +5,19 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
+import com.example.zappysearch.domain.model.Post
 import com.example.zappysearch.domain.model.toArg
 import com.example.zappysearch.presentation.auth.AuthViewModel
 import com.example.zappysearch.presentation.chatAndPost.ChatEvent
@@ -45,15 +49,25 @@ fun AllPostsScreen(
 
     val myId = authViewModel.state.value.currentUser?.uid ?: ""
     val chatState = chatViewModel.chatState.value
+    val filteredPosts = remember { mutableStateOf<List<Post>>(emptyList()) }
+    val isFilterActive = remember { mutableStateOf(false) }
+
 
     var showLocationPicker by remember { mutableStateOf(false) }
     var location by remember { mutableStateOf<LatLng?>(null) }
     var address by remember { mutableStateOf("") }
     var radiusText by remember { mutableStateOf("5.0") }
 
-    val posts = remember(chatState.allPosts, myId) {
-        chatState.allPosts.filter { it.userId != myId }
+    val posts = remember(chatState.allPosts, myId, filteredPosts.value, isFilterActive.value) {
+        if (isFilterActive.value) {
+            filteredPosts.value
+        } else {
+            chatState.allPosts.filter { it.userId != myId }
+        }
     }
+
+
+
 
 
 
@@ -106,17 +120,48 @@ fun AllPostsScreen(
                     singleLine = true,
                     modifier = Modifier.weight(2f)
                 )
-                Button(
+                IconButton(
                     onClick = {
 
-                        Log.d("AllPostsScreen", "Searching Nearby Posts")
 
+
+                        val loc  = location
+                        if(loc!=null && radiusText.isNotBlank()){
+                            Log.d("AllPostsScreen", "Searching Nearby Posts")
+
+                            geoPostViewModel.getNearbyPosts(
+                                lat = loc.latitude,
+                                long = loc.longitude,
+                                radius = if(radiusText.toDouble() > 0.0){
+                                     radiusText.toDouble()
+                                }else{
+                                    1.0
+                                }
+                            ){postIds->
+
+                                val nearbyPosts = chatState.allPosts
+                                    .filter { it.userId != myId }
+                                    .filter { postIds.contains(it.postId) }
+
+                                filteredPosts.value = nearbyPosts
+                                isFilterActive.value = true
+                            }
+                        }
 
                     },
                     modifier = Modifier.weight(1f),
                     enabled = address.isNotBlank() && location!=null && radiusText.isNotBlank()
                 ) {
-                    Text("Search Nearby Posts")
+                   Icon(
+                       imageVector = Icons.Default.Search,
+                       contentDescription = "Search Nearby Posts"
+                   )
+                }
+
+                Button(onClick = {
+                    isFilterActive.value = false
+                }) {
+                    Text("Clear Filter")
                 }
 
 

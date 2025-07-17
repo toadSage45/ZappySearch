@@ -93,12 +93,6 @@ fun AuthProfileScreen(
     Box(
         modifier = Modifier.fillMaxSize()
     ){
-        Image(
-            painter = painterResource(R.drawable.profile_background_image),
-            contentDescription = "Profile Background",
-            modifier = Modifier.matchParentSize(),
-            contentScale = ContentScale.Crop
-        )
         Column(
             modifier = Modifier
                 .fillMaxSize()
