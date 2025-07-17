@@ -61,6 +61,10 @@ dependencies {
     val placesVersion = "3.4.0"
     implementation("com.google.android.libraries.places:places:$placesVersion")
 
+    implementation("com.squareup.retrofit2:retrofit:2.9.0")
+    implementation("com.squareup.retrofit2:converter-gson:2.9.0")
+
+
     // Google Maps Compose library
     val mapsComposeVersion = "4.4.1"
     implementation("com.google.maps.android:maps-compose:$mapsComposeVersion")

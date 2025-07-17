@@ -7,6 +7,7 @@ import androidx.credentials.GetCredentialRequest
 import com.example.zappysearch.R
 import com.example.zappysearch.data.repository.AuthRepositoryImpl
 import com.example.zappysearch.data.repository.ChatRepositoryImpl
+import com.example.zappysearch.data.repository.GeoPostApi
 import com.example.zappysearch.domain.repository.AuthRepository
 import com.example.zappysearch.domain.repository.ChatRepository
 import com.google.android.libraries.identity.googleid.GetGoogleIdOption
@@ -20,6 +21,8 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
+import retrofit2.Retrofit
+import retrofit2.converter.gson.GsonConverterFactory
 import javax.inject.Singleton
 
 @Module
@@ -85,6 +88,24 @@ object AppModule {
     @Singleton
     fun provideFirebaseFireStore() : FirebaseFirestore {
         return Firebase.firestore
+    }
+
+    @Module
+    @InstallIn(SingletonComponent::class)
+    object NetworkModule {
+
+        @Provides
+        @Singleton
+        fun provideRetrofit(): Retrofit =
+            Retrofit.Builder()
+                .baseUrl("https://zappy-search-backend.onrender.com/")
+                .addConverterFactory(GsonConverterFactory.create())
+                .build()
+
+        @Provides
+        @Singleton
+        fun provideGeoPostApi(retrofit: Retrofit): GeoPostApi =
+            retrofit.create(GeoPostApi::class.java)
     }
 
 

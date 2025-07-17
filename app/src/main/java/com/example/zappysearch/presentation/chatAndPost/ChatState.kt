@@ -12,5 +12,6 @@ data class ChatState(
     val singleUserMessages : List<Message> = emptyList<Message>(),
     val myPosts : List<Post> = emptyList<Post>(),
     val otherUser : AppUser? = null,
-    val userDetailsMap : Map<String , AppUser> = emptyMap()
+    val userDetailsMap : Map<String , AppUser> = emptyMap(),
+    val geoPostId : String? = null
 )

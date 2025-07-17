@@ -3,6 +3,7 @@ package com.example.zappysearch.presentation.screens
 import android.Manifest
 import android.content.pm.PackageManager
 import android.location.Geocoder
+import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
@@ -45,6 +46,7 @@ import com.example.zappysearch.domain.model.toGeoPoint
 import com.example.zappysearch.presentation.auth.AuthViewModel
 import com.example.zappysearch.presentation.chatAndPost.ChatEvent
 import com.example.zappysearch.presentation.chatAndPost.ChatViewModel
+import com.example.zappysearch.presentation.geoPost.GeoPostViewModel
 import com.example.zappysearch.presentation.navigation.Screen
 import com.example.zappysearch.presentation.screens.components.LocationPickerModal
 import com.example.zappysearch.presentation.screens.components.StartChatIconButton
@@ -59,8 +61,11 @@ import kotlinx.coroutines.launch
 fun PostUploadUpdateScreen(
     authViewModel: AuthViewModel = hiltViewModel(),
     chatViewModel: ChatViewModel = hiltViewModel(),
+    geoPostViewModel: GeoPostViewModel = hiltViewModel(),
     navController: NavController
 ) {
+
+
 
     val context = LocalContext.current
     LaunchedEffect(Unit) {
@@ -89,8 +94,29 @@ fun PostUploadUpdateScreen(
     var getCurrentLocation by remember { mutableStateOf<Boolean>(false) }
 
 
+    val chatState = chatViewModel.chatState
 
-        val permissionLauncher = rememberLauncherForActivityResult(
+    LaunchedEffect(chatState.value.geoPostId, location) {
+        val geoPostId = chatState.value.geoPostId
+        val loc = location
+
+        if (geoPostId != null && loc != null) {
+            Log.d("GeoPostTrigger", "Calling saveGeoLocation for $geoPostId at $loc")
+
+            geoPostViewModel.saveGeoLocation(
+                postId = geoPostId,
+                lat = loc.latitude,
+                long = loc.longitude
+            )
+
+            // Optional: Reset geoPostId to prevent repeated triggering
+            chatViewModel.onChatEvent(ChatEvent.ClearGeoPostId);
+        }
+    }
+
+
+
+    val permissionLauncher = rememberLauncherForActivityResult(
             contract = ActivityResultContracts.RequestPermission()
         ) { isGranted: Boolean ->
             if (isGranted) {
@@ -182,7 +208,7 @@ fun PostUploadUpdateScreen(
                 .padding(padding)
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
+        )  {
 
             OutlinedTextField(
                 value = postTitle,
@@ -202,7 +228,7 @@ fun PostUploadUpdateScreen(
             )
 
             OutlinedTextField(
-                value = location?.let { "${it.latitude}, ${it.longitude} , $address" } ?: "",
+                value = address,
                 onValueChange = {}, // No typing allowed
                 label = { Text("Location") },
                 readOnly = true,
@@ -241,6 +267,8 @@ fun PostUploadUpdateScreen(
                             address = address
                         )
 
+
+
                         scope.launch {
                             if (isUpdating) {
                                 chatViewModel.onChatEvent(ChatEvent.UpdatePost(post=post,myId = myId))
@@ -250,6 +278,11 @@ fun PostUploadUpdateScreen(
                                 snackBarHostState.showSnackbar("Post created")
                             }
 
+                            //save the geo post
+
+
+
+
                             chatViewModel.onChatEvent(ChatEvent.GetAllMyPosts(myId= myId))
                         }
                         navController.navigate(Screen.MyPostsScreen.route) {
@@ -258,7 +291,7 @@ fun PostUploadUpdateScreen(
                         }
                     },
                     modifier = Modifier.fillMaxWidth(),
-                    enabled = postTitle.isNotBlank() && postDescription.isNotBlank()
+                    enabled = postTitle.isNotBlank() && postDescription.isNotBlank() && address.isNotBlank()
                 ) {
                     Text(if (isUpdating) "Update Post" else "Create Post")
                 }

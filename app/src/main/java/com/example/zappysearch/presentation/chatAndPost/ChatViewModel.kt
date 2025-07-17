@@ -112,7 +112,8 @@ class ChatViewModel @Inject constructor(private val chatRepository: ChatReposito
             is ChatEvent.UploadPost -> {
                 viewModelScope.launch(Dispatchers.IO) {
                     try {
-                        chatRepository.uploadPost(event.post)
+                        val geoPostId = chatRepository.uploadPost(event.post)
+                        _chatState.value = chatState.value.copy(geoPostId = geoPostId)
                         //onChatEvent(ChatEvent.GetAllMyPosts(event.myId))
                     } catch (e: Exception) {
                         Log.e(TAG, "Error uploading post: ${e.message}", e)
@@ -123,8 +124,9 @@ class ChatViewModel @Inject constructor(private val chatRepository: ChatReposito
             is ChatEvent.UpdatePost -> {
                 viewModelScope.launch(Dispatchers.IO) {
                     try {
-                        chatRepository.updatePost(event.post)
+                        val geoPostId = chatRepository.updatePost(event.post)
                         //onChatEvent(ChatEvent.GetAllMyPosts(event.myId))
+                        _chatState.value = chatState.value.copy(geoPostId = geoPostId)
                     } catch (e: Exception) {
                         Log.e(TAG, "Error uploading post: ${e.message}", e)
                     }
@@ -163,6 +165,12 @@ class ChatViewModel @Inject constructor(private val chatRepository: ChatReposito
                     }catch (e: Exception) {
                         Log.e(TAG, "Error sending the message: ${e.message}", e)
                     }
+                }
+            }
+
+            ChatEvent.ClearGeoPostId -> {
+                viewModelScope.launch(Dispatchers.IO){
+                    _chatState.value = chatState.value.copy(geoPostId = null)
                 }
             }
         }

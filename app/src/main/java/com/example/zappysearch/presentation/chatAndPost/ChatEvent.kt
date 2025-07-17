@@ -16,4 +16,5 @@ sealed class ChatEvent {
     data class GetUserInfo(val userId : String) : ChatEvent()
     data class SetUserInfo(val user : AppUser) : ChatEvent()
     data class SendMessage(val myId : String , val otherUserId: String , val message : Message) : ChatEvent()
+    object ClearGeoPostId : ChatEvent()
 }
